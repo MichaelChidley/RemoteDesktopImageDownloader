@@ -11,6 +11,7 @@ Overview: Class used to download images taken on the current date when using the
 -----------------------------------------------------------------------------------------------------------
 History:
 10/04/2014      1.0	MJC	Created
+23/04/2014      1.1     MJC     Added ability to choose what period to get images from
 -----------------------------------------------------------------------------------------------------------
 Uses:
 
@@ -26,6 +27,23 @@ class RemoteDesktopDownload
         var $storageLocation = "";
         var $arrImageLocation = array();
         
+        var $mode;
+        
+        
+        /*----------------------------------------------------------------------------------
+      	Function:	RemoteDesktopDownload
+      	Overview:	Constructor function to set the period to get images within
+      			
+      	In:      $strPeriod      String  Image period	
+                                                                                                       
+      	Out:	bool        True
+	----------------------------------------------------------------------------------*/ 
+        public function RemoteDesktopDownload($strPeriod='today')
+        {
+                $this->mode = $strPeriod;
+                
+                return true;
+        }
         
         /*----------------------------------------------------------------------------------
       	Function:	login
@@ -40,12 +58,16 @@ class RemoteDesktopDownload
                 $ch = curl_init($this->url."/api/login?password=".md5($this->password)."");
                 $result = curl_exec($ch); 
                 
-                return true; 
+                if($result)
+                {
+                        return true;
+                }
+                return false; 
         }
         
         
         /*----------------------------------------------------------------------------------
-      	Function:	login
+      	Function:	mainPage
       	Overview:	Function used to get a JSON list of todays images and store them
                         in an array 
       			
@@ -55,17 +77,60 @@ class RemoteDesktopDownload
 	----------------------------------------------------------------------------------*/ 
         public function mainPage()
         {               
-                $mainPage = file_get_contents($this->url."/index.html?nocache=".time());
-                
-                $jsonTodayImages = json_decode(file_get_contents($this->url."/api/photos?cmd=page&whichPage=1&when=today&itemsPerPage=20"));
-                
-                $arrImages = $jsonTodayImages->{'photos'};
-                foreach($arrImages as $indImages)
+                $mainPage = @file_get_contents($this->url."/index.html?nocache=".time());
+                if(!$mainPage)
                 {
-                        $imageLocation = $indImages->{'id'};
-                        
-                        array_push($this->arrImageLocation,$imageLocation); 
+                        return false;     
                 }
+                
+                switch($this->mode)
+                {
+                        case "today":
+                                $when = "today";
+                        break;
+                        
+                        
+                        case "week":
+                                $when = "rest_week";
+                        break;
+                        
+                        
+                        case "month":
+                                $when = "rest_month";
+                        break;
+                        
+                        
+                        case "all":
+                                $when = "rest";
+                        break;
+                        
+                        
+                        default:
+                                $when = "today";
+                        break; 
+                }
+                
+                $jsonTodayImages = json_decode(file_get_contents($this->url."/api/photos?cmd=page&whichPage=1&when=".$when."&itemsPerPage=20"));
+                
+                $intPage=1;
+                $intMaxPage = $jsonTodayImages->{'pages'};
+                
+                
+                while($intPage !== $intMaxPage)
+                {
+                        $jsonTodayImages = json_decode(file_get_contents($this->url."/api/photos?cmd=page&whichPage=".$intPage."&when=".$when."&itemsPerPage=20"));
+                           
+                        $arrImages = $jsonTodayImages->{'photos'};
+                        foreach($arrImages as $indImages)
+                        {
+                                $imageLocation = $indImages->{'id'};
+                                
+                                array_push($this->arrImageLocation,$imageLocation); 
+                        }     
+                          
+                        $intPage++;
+                
+                }             
                 
                 return true;
         }
@@ -82,6 +147,10 @@ class RemoteDesktopDownload
 	----------------------------------------------------------------------------------*/ 
         public function saveImages()
         {
+                if(!is_dir($this->storageLocation))
+                {
+                        mkdir($this->storageLocation);         
+                }
                 foreach($this->arrImageLocation as $indImage)
                 {
                         $imgUrl = $this->url."/api/photos?cmd=get_image&id=".urlencode($indImage);
@@ -103,8 +172,12 @@ class RemoteDesktopDownload
         }
 }
 
-$objDownloader = new RemoteDesktopDownload();
+$objDownloader = new RemoteDesktopDownload("month");
 $objDownloader->login();
-$objDownloader->mainPage();
+
+if(!$objDownloader->mainPage())
+{
+        echo "Unable to connect to host, is the service running?";
+}
 $objDownloader->saveImages();
 ?>
