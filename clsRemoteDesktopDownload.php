@@ -158,13 +158,16 @@ class RemoteDesktopDownload
                         $arrFindName = explode('%2',$imgUrl);
                         $strName = $arrFindName[count($arrFindName)-1];
                         
-                        $ch = curl_init($imgUrl);
-                        $fp = fopen($this->storageLocation.$strName, 'w');
-                        curl_setopt($ch, CURLOPT_FILE, $fp);
-                        curl_setopt($ch, CURLOPT_HEADER, 0);
-                        curl_exec($ch);
-                        curl_close($ch);
-                        fclose($fp);                       
+                        if(!file_exists($this->storageLocation.$strName))
+                        {
+                                $ch = curl_init($imgUrl);
+                                $fp = fopen($this->storageLocation.$strName, 'w');
+                                curl_setopt($ch, CURLOPT_FILE, $fp);
+                                curl_setopt($ch, CURLOPT_HEADER, 0);
+                                curl_exec($ch);
+                                curl_close($ch);
+                                fclose($fp);
+                        }                       
 
                 }
                 
@@ -172,7 +175,7 @@ class RemoteDesktopDownload
         }
 }
 
-$objDownloader = new RemoteDesktopDownload("month");
+$objDownloader = new RemoteDesktopDownload("all");
 $objDownloader->login();
 
 if(!$objDownloader->mainPage())
