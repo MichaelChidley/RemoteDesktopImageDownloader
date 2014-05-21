@@ -116,7 +116,7 @@ class RemoteDesktopDownload
                 $intMaxPage = $jsonTodayImages->{'pages'};
                 
                 
-                while($intPage !== $intMaxPage)
+                while($intPage <= $intMaxPage)
                 {
                         $jsonTodayImages = json_decode(file_get_contents($this->url."/api/photos?cmd=page&whichPage=".$intPage."&when=".$when."&itemsPerPage=20"));
                            
@@ -175,7 +175,7 @@ class RemoteDesktopDownload
         }
 }
 
-$objDownloader = new RemoteDesktopDownload("all");
+$objDownloader = new RemoteDesktopDownload("today");
 $objDownloader->login();
 
 if(!$objDownloader->mainPage())
